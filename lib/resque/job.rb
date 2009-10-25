@@ -9,11 +9,15 @@ module Resque
     end
 
     def self.create(queue, klass, *args)
-      if !queue || queue.to_s.empty?
-        raise NoQueueError.new("Jobs must be placed onto a queue.")
-      end
-
       Resque.push(queue, :class => klass.to_s, :args => args)
+    end
+
+    def self.ensure(queue, klass, *args)
+      if Resque.redis.sadd("queue_set:#{queue}", "#{klass.to_s}##{args}")
+        create(queue, klass, *args)
+      else
+        true
+      end
     end
 
     def self.reserve(queue)
@@ -24,6 +28,8 @@ module Resque
     def perform
       return unless object && object.respond_to?(:perform)
       args ? object.perform(*args) : object.perform
+    ensure
+      Resque.redis.srem("queue_set:#{queue}", "#{payload['class']}##{args}")
     end
 
     def object

@@ -47,6 +47,23 @@ context "Resque" do
     assert_equal '(Job{jobs} | SomeJob | [20, "/tmp"])', job.inspect
   end
 
+  test "multiple ensures results in one queued job" do
+    assert_equal 0, Resque.size(:jobs)
+    assert Resque::Job.ensure(:jobs, 'SomeJob', 20, '/tmp')
+    assert Resque::Job.ensure(:jobs, 'SomeJob', 20, '/tmp')
+    assert_equal 1, Resque.size(:jobs)
+  end
+
+  test "ensured jobs are cleared successfully." do
+    assert Resque::Job.ensure(:jobs, 'SomeJob', 20, '/tmp')
+    worker = Resque::Worker.new(:jobs)
+    worker.process
+
+    assert_equal 0, Resque.size(:jobs)
+    assert Resque::Job.ensure(:jobs, 'SomeJob', 20, '/tmp')
+    assert_equal 1, Resque.size(:jobs)
+  end
+
   test "can put jobs on a queue by way of a method" do
     assert_equal 0, Resque.size(:method)
     assert Resque.enqueue(SomeMethodJob, 20, '/tmp')
