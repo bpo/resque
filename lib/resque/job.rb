@@ -1,5 +1,7 @@
 module Resque
   class Job
+    include Resque::Helpers
+
     attr_accessor :worker
     attr_reader   :queue, :payload
 
@@ -85,20 +87,5 @@ module Resque
       constant
     end
 
-    def encode(*args)
-      Resque.encode(*args)
-    end
-
-    def decode(*args)
-      Resque.decode(*args)
-    end
-
-    def redis
-      Resque.redis
-    end
-
-    def self.redis
-      Resque.redis
-    end
   end
 end
