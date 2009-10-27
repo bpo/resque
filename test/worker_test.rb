@@ -209,4 +209,21 @@ context "Resque::Worker" do
       assert_equal 1, Resque.workers.size
     end
   end
+
+  test "cleans up the job_set on start (more crash recovery)" do
+    # run-once style job
+    Resque::Job.create_once(:jobs, SomeJob, 20, '/tmp')
+
+    # simulate starting a job without finishing
+    doomed_worker = Resque::Worker.new(:jobs)
+    doomed_worker.instance_variable_set(:@to_s, "#{`hostname`.chomp}:1:jobs")
+    doomed_worker.register_worker
+
+    job = doomed_worker.reserve
+    # kill -9 doomed_worker
+    assert_equal 1, Resque.redis.scard("job_set:jobs")
+
+    @worker.work(0)
+    assert_equal 0, Resque.redis.scard("job_set:jobs")
+  end
 end
