@@ -119,11 +119,11 @@ module Resque
   # If no workers are running and this is called N times with the same
   # arguments, your job will be enqueued once.
   #
-  # Note that this will only detect with collisions with jobs created
-  # with this method. Calling enqueue then ensure_enqueued will still
+  # Note that this will only detect collisions with jobs created
+  # with this method. Calling enqueue then enqueue_once will still
   # result in 2 jobs in the queue.
-  def ensure_enqueued(klass, *args)
-    Job.ensure(determine_queue(klass), klass, *args)
+  def enqueue_once(klass, *args)
+    Job.create_once(determine_queue(klass), klass, *args)
   end
 
   def determine_queue(klass)

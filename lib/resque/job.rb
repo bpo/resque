@@ -12,7 +12,7 @@ module Resque
       Resque.push(queue, :class => klass.to_s, :args => args)
     end
 
-    def self.ensure(queue, klass, *args)
+    def self.create_once(queue, klass, *args)
       if Resque.redis.sadd("queue_set:#{queue}", "#{klass.to_s}##{args}")
         create(queue, klass, *args)
       else

@@ -47,20 +47,20 @@ context "Resque" do
     assert_equal '(Job{jobs} | SomeJob | [20, "/tmp"])', job.inspect
   end
 
-  test "multiple ensures results in one queued job" do
+  test "multiple create_once results in one queued job" do
     assert_equal 0, Resque.size(:jobs)
-    assert Resque::Job.ensure(:jobs, 'SomeJob', 20, '/tmp')
-    assert Resque::Job.ensure(:jobs, 'SomeJob', 20, '/tmp')
+    assert Resque::Job.create_once(:jobs, 'SomeJob', 20, '/tmp')
+    assert Resque::Job.create_once(:jobs, 'SomeJob', 20, '/tmp')
     assert_equal 1, Resque.size(:jobs)
   end
 
-  test "ensured jobs are cleared successfully." do
-    assert Resque::Job.ensure(:jobs, 'SomeJob', 20, '/tmp')
+  test "enqueue_once jobs are cleared successfully." do
+    assert Resque::Job.create_once(:jobs, 'SomeJob', 20, '/tmp')
     worker = Resque::Worker.new(:jobs)
     worker.process
 
     assert_equal 0, Resque.size(:jobs)
-    assert Resque::Job.ensure(:jobs, 'SomeJob', 20, '/tmp')
+    assert Resque::Job.create_once(:jobs, 'SomeJob', 20, '/tmp')
     assert_equal 1, Resque.size(:jobs)
   end
 
@@ -77,6 +77,21 @@ context "Resque" do
     assert_equal '/tmp', job.args[1]
 
     assert Resque.reserve(:method)
+    assert_equal nil, Resque.reserve(:method)
+  end
+
+  test "can put jobs on a queue only once with a method call" do
+    assert_equal 0, Resque.size(:method)
+    assert Resque.enqueue_once(SomeMethodJob, 20, '/tmp')
+    assert Resque.enqueue_once(SomeMethodJob, 20, '/tmp')
+
+    job = Resque.reserve(:method)
+
+    assert_kind_of Resque::Job, job
+    assert_equal SomeMethodJob, job.object
+    assert_equal 20, job.args[0]
+    assert_equal '/tmp', job.args[1]
+
     assert_equal nil, Resque.reserve(:method)
   end
 
