@@ -50,7 +50,7 @@ context "Resque" do
   test "multiple create_once results in one queued job" do
     assert_equal 0, Resque.size(:jobs)
     assert Resque::Job.create_once(:jobs, 'SomeJob', 20, '/tmp')
-    assert Resque::Job.create_once(:jobs, 'SomeJob', 20, '/tmp')
+    assert !Resque::Job.create_once(:jobs, 'SomeJob', 20, '/tmp')
     assert_equal 1, Resque.size(:jobs)
   end
 
@@ -83,7 +83,7 @@ context "Resque" do
   test "can put jobs on a queue only once with a method call" do
     assert_equal 0, Resque.size(:method)
     assert Resque.enqueue_once(SomeMethodJob, 20, '/tmp')
-    assert Resque.enqueue_once(SomeMethodJob, 20, '/tmp')
+    assert !Resque.enqueue_once(SomeMethodJob, 20, '/tmp')
 
     job = Resque.reserve(:method)
 

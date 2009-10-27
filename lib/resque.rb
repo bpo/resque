@@ -52,9 +52,12 @@ module Resque
   # queue manipulation
   #
 
-  def push(queue, item)
+  def push(queue, item, once_only = false)
     watch_queue(queue)
-    redis.rpush "queue:#{queue}", encode(item)
+    data = encode(item)
+
+    return false if once_only and not redis.sadd "job_set:#{queue}", hash_id(item)
+    redis.rpush "queue:#{queue}", data
   end
 
   def pop(queue)
