@@ -1,8 +1,7 @@
-require 'rufus/scheduler'
+require 'resque/scheduler'
 
 module Resque
   module Failure
-
     ##
     # Support for automatically retrying jobs after the fashion of
     # Delayed::Job.
@@ -48,7 +47,7 @@ module Resque
         delay = (attempts ** 4) + 5
 
         log "Scheduling #{payload.inspect} for execution in #{delay}s after #{attempts} attempts."
-        Redisched.delay(delay, queue, self.class, attempts, payload)
+        Scheduler.enqueue_at(Time.now + delay, queue, self.class, attempts, payload)
       end
 
       def give_up
@@ -65,49 +64,5 @@ module Resque
         end
       end
     end
-  end
-
-  #
-  # Complete kludge, but effective until this can be replaced with a
-  # persistent scheduling mechanism.
-  #
-  class Redisched
-    extend Resque::Helpers
-
-    #
-    # redis access
-    #
-
-    def self.redis
-      return @redis if @redis
-      self.redis = Resque.redis
-      self.redis
-    end
-
-    def self.redis=(server)
-      @redis = Redis::Namespace.new(:auto_retry, :redis => server)
-    end
-
-    def self.delay(seconds, queue, klass, *args)
-      redis.rpush("rerun", encode( { "delay" => seconds,
-                                     "queue" => queue,
-                                     "class" => klass,
-                                     "args"  => args } ) )
-    end
-
-    def self.start
-      @scheduler = Rufus::Scheduler.start_new
-      @scheduler.every "4s" do
-        while bundle = Redisched.redis.lpop("rerun")
-          payload  = decode(bundle)
-
-          @scheduler.in "#{payload["delay"]}s" do
-            Resque::Job.create payload["queue"], payload["class"], *payload["args"]
-          end
-        end
-      end
-    end
-
-    self.start if ENV["RETRY_HANDLER"]
   end
 end
