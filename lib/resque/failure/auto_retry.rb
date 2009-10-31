@@ -102,7 +102,7 @@ module Resque
           payload  = decode(bundle)
 
           @scheduler.in "#{payload["delay"]}s" do
-            Resque::Job.create payload["queue"], payload["class"], *payload["args"]
+            Resque::Job.create_once payload["queue"], payload["class"], *payload["args"]
           end
         end
       end
