@@ -34,13 +34,14 @@ module Resque
     end
 
     # Drops any pending jobs into the appropriate Resque queue.
-    # Returns false when no more jobs need to be enqueued for now.
-    def self.check_schedule
+    # Returns false until every job needing scheduled has been
+    # scheduled correctly.
+    def self.jobs_scheduled
       time = Time.now.to_i + FUZZINESS
       $stdout.puts "Checking for jobs to be run before #{time}"
       tasks = redis.sort "tasks", :by => "resque:scheduler:time_*",
                                   :limit => [0, 10]
-      return false if tasks.empty?
+      return true if tasks.empty?
 
       while (id = tasks.shift) && (run_at = redis.get("time_#{id}")) && run_at.to_i <= time
         job = decode redis.get("task_#{id}")
@@ -51,7 +52,8 @@ module Resque
         redis.srem "tasks", id
       end
 
-      tasks.empty?
+      # remaining tasks aren't until later?
+      !tasks.empty?
     end
 
     # In the off chance the scheduler dies unexpectedly, this cleans
@@ -69,9 +71,9 @@ module Resque
     def self.run
       clean
       loop do
-        while check_schedule
+        while jobs_scheduled
+          sleep 2*FUZZINESS
         end
-        sleep 2*FUZZINESS
       end
     end
   end
