@@ -2,6 +2,7 @@ module Resque
   class Job
     attr_accessor :worker
     attr_reader   :queue, :payload
+    include Helpers
 
     def initialize(queue, payload)
       @queue = queue

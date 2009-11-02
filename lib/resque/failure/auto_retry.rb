@@ -6,7 +6,7 @@ module Resque
     # Support for automatically retrying jobs after the fashion of
     # Delayed::Job.
     class AutoRetry < Base
-      include Helpers
+      extend Helpers
 
       ##
       # require 'resque/failure/auto_retry'
