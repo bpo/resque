@@ -21,4 +21,12 @@ namespace :resque do
 
     worker.work(ENV['INTERVAL'] || 5) # interval, will block
   end
+
+  desc "Start the Resque Scheduler"
+  task :scheduler do
+    Rake::Task['resque:setup'].invoke rescue nil
+    require 'resque/scheduler'
+
+    Resque::Scheduler.run
+  end
 end
