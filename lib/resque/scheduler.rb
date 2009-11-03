@@ -27,7 +27,7 @@ module Resque
 
       id = hash_id(delayed)
       redis.sadd "tasks", id
-      redis.set "time_#{id}", time
+      redis.set "time_#{id}", time.to_i
       redis.set "task_#{id}", delayed
     end
 
