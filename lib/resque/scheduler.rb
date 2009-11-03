@@ -21,13 +21,13 @@ module Resque
     # Resque::Scheduler.enqueue_at(Time.now, :critical, MyJob)
     # Resque::Scheduler.enqueue_at(Time.now + 600, :critical, MyJob)
     def self.enqueue_at(time, queue, klass, *args)
-      delayed = encode "time"  => time,
-                       "queue" => queue,
+      delayed = encode "queue" => queue,
                        "class" => klass,
                        "args"  => args
 
       id = hash_id(delayed)
-      redis.sadd "tasks", "#{time.to_i}:#{id}"
+      redis.sadd "tasks", id
+      redis.set "time_#{id}", time
       redis.set "task_#{id}", delayed
     end
 
@@ -39,23 +39,24 @@ module Resque
       $stdout.puts "Checking for jobs to be run before #{time}"
       return unless redis.type("resque:scheduler:tasks") == "set"
 
-      while redis.sort("tasks", :limit => [0,1]).first =~ /(.*):(.*)/
-        run_at, id = $1, $2
+      while id = redis.sort("tasks", :by => "time_*", :limit => [0,1]).first
+        run_at = redis.get "time_#{id}"
         break if run_at.to_i > time # next scheduled is in the future.
-        run_job(run_at, id)
+        run_job(id)
       end
     end
 
-    def self.run_job(run_at, id)
+    def self.run_job(id)
       $stdout.puts "Running job #{id}"
       job = decode redis.get("task_#{id}")
-      clean(run_at, id)
+      clean(id)
       Resque.push(job["queue"], job, true) if job
     end
 
-    def self.clean(run_at, id)
+    def self.clean(id)
       redis.del "task_#{id}"
-      redis.srem "tasks", "#{run_at}:#{id}"
+      redis.del "time_#{id}"
+      redis.srem "tasks", id
     end
 
     def self.run
