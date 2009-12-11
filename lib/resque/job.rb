@@ -36,6 +36,27 @@ module Resque
     #
     # Raises an exception if no queue or class is given.
     def self.create(queue, klass, *args)
+      check_queue_and_class(queue, klass)
+      Resque.push(queue, :class => klass.to_s, :args => args)
+    end
+
+    # Same as Job.create, but turns into a no-op if this method has
+    # been used to place the job on the queue before and the Job has
+    # not yet been taken off the queue.
+    def self.create_once(queue, klass, *args)
+      check_queue_and_class(queue, klass)
+
+      item = {:class => klass.to_s, :args => args}
+      if redis.sadd "job_set:#{queue}", hash_id(item)
+        Resque.push(queue, item)
+        true
+      else
+        false
+      end
+    end
+
+    private
+    def self.check_queue_and_class(queue, klass)
       if queue.to_s.empty?
         raise NoQueueError.new("Jobs must be placed onto a queue.")
       end
@@ -43,9 +64,8 @@ module Resque
       if klass.to_s.empty?
         raise NoClassError.new("Jobs must be given a class.")
       end
-
-      Resque.push(queue, :class => klass.to_s, :args => args)
     end
+    public
 
     # Given a string queue name, returns an instance of Resque::Job
     # if any jobs are available. If not, returns nil.

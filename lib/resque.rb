@@ -135,9 +135,28 @@ module Resque
   #
   # This method is considered part of the `stable` API.
   def enqueue(klass, *args)
+    Job.create(determine_queue(klass), klass, *args)
+  end
+
+  # Just like 'enqueue' above, but this will skip enqueuing the job if
+  # the job already exists in the queue.
+  #
+  # If no workers are running and this is called N times with the same 
+  # arguments (N > 0), your job will be enqueued once.
+  #
+  # Note that this will only detect collisions with jobs created with
+  # this method. Calling enqueue and then enqueue_once will still
+  # result in 2 jobs in the queue.
+  def enqueue_once(klass, *args)
+    Job.create_once(determine_queue(klass), klass, *args)
+  end
+
+  # Determines the queue for the job according to the rules specified
+  # in 'enqueue' above.
+  def determine_queue(klass)
     queue = klass.instance_variable_get(:@queue)
     queue ||= klass.queue if klass.respond_to?(:queue)
-    Job.create(queue, klass, *args)
+    queue
   end
 
   # This method will return a `Resque::Job` object or a non-true value
